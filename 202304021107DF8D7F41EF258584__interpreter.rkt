@@ -88,12 +88,10 @@
         [else (err-if-got-non-boolean cond)]
       )
     ]
-    [(e-lam [param: Symbol] [body: Expr])
-      (lambda (param)
-        body
-      )
+    [(e-lam [param: Symbol] [body: Expr]) (v-fun param body env)]
+    [(e-app [func: Expr] [arg: Expr])
+      sugar-let
     ]
-    [(e-app [func: Expr] [arg: Expr])]
     [(e-id [name: Symbol])
       (cond
         []
