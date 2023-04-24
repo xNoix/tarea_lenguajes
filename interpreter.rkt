@@ -13,22 +13,32 @@
 
 (define (desugar [expr : Expr]): Expr
   (type-case Expr expr
-    [(sugar-and [left : Expr][right : Expr])
-      (e-if (interp left)
-        #f
-        (e-if (interp right)
-            #f
-          #t
-        )
+    [(sugar-and [left : Expr] [right : Expr])
+      (cond 
+        [(interp left)
+          (cond
+            [(interp right)
+              [(v-bool true)]
+            ]
+            [else (v-bool false)]
+          )
+        ]
+        [else (v-bool false)]
       )
     ]
     [(sugar-or [left : Expr][right : Expr])
-      (e-if (interp left)
-        (e-if (interp right)
-          #f
-          #t
-        )
-        #t
+      (cond
+        [(interp left)
+          [(v-bool true)]
+        ]
+        [else
+          (cond
+            [(interp right)
+              [(v-bool true)]
+            ]
+            [else (v-bool false)]
+          )
+        ]
       )
     ]
     [(sugar-let [id : Symbol][value : Expr][body : Expr])
@@ -37,7 +47,7 @@
   )
 )
 
-(define (interp [expr : Expr]): Value
+(define (interp [expr : Expr] [env : Env]): Value
   (type-case Expr expr
     [(e-num [value : Number]) (v-num value)]
     [(e-str [value : String]) (v-str value)]
@@ -88,14 +98,24 @@
         [else (err-if-got-non-boolean cond)]
       )
     ]
-    [(e-lam [param: Symbol] [body: Expr]) (v-fun param body env)]
-    [(e-app [func: Expr] [arg: Expr])
-      sugar-let
-    ]
-    [(e-id [name: Symbol])
-      (cond
-        []
+    [(e-lam param body) (v-fun param body env)]
+    [(e-app func arg)(local ([define fd (interp func env)])
+      (interp (v-fun-body fd)
+        (extend-env (bind (v-fun-arg fd)
+          (interp arg env)
+        ) mt-env)
       )
-    ]
+    )]
+    [(e-id name) (lookup name env) ]
+  )
+)
+
+(define (lookup [for : Symbol] [env : Env]) : Value
+  (cond
+    [(empty? env) (err-unbound-id)]
+    [else (cond
+            [(symbol=? for (bind-name (first env)))
+              (bind-val (first env))]
+            [else (lookup for (rest env))])]
   )
 )
